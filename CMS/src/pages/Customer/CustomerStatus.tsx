@@ -1,14 +1,15 @@
-//고객 현황 목록 조회
+// 고객 현황 목록 조회 — 표준 ListTable + useClientPagedList 기반
 
-import { CustomerTable } from './CustomerTable';
+import { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ListFilter } from 'lucide-react';
 import { CustomerFilterModal, FilterOptions } from './CustomerFilterModal';
 import { ActiveFilterTags } from '../../shared/ui/ActiveFilterTags';
-import { ListFilter } from 'lucide-react';
-import { useState, useMemo, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useHighlightNavigation } from '../hooks/useHighlightNavigation';
+import { ListTable, type ListColumn } from '../../shared/components/list/ListTable';
+import { useClientPagedList } from '../../shared/hooks/useClientPagedList';
 import { getCompanies } from '../../api/company';
 import { formatRevenue } from '../../shared/utils/formatters';
+import { getRegionColor } from '../../shared/utils/colorMapping';
 
 interface CustomerUI {
   id: number;
@@ -28,37 +29,37 @@ interface CustomerUI {
   비고: string;
 }
 
+const DEFAULT_INDUSTRIES = ['제조업', '도소매업', '서비스업', '건설업', '정보통신업', '공공기관'];
+
+const EMPTY_FILTERS: FilterOptions = {
+  기업명: '',
+  대표자: '',
+  주소: '',
+  지역구분: '',
+  업종: '',
+  업태: '',
+  영업담당자: '',
+};
+
 export function CustomerStatus() {
-  const [customers, setCustomers] = useState<CustomerUI[]>([]); 
-  
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [customers, setCustomers] = useState<CustomerUI[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(0); 
-  const tableContainerRef = useRef<HTMLDivElement>(null);
-  
-  const [filters, setFilters] = useState<FilterOptions>({
-    기업명: '',
-    대표자: '',
-    주소: '',
-    지역구분: '',
-    업종: '',
-    업태: '',
-    영업담당자: '',
-  });
-  
+  const [filters, setFilters] = useState<FilterOptions>(EMPTY_FILTERS);
+  const [highlightId, setHighlightId] = useState<number | null>(null);
+
   const today = new Date();
   const formattedDate = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
 
-  // 서버에서 데이터 가져오기
+  // 서버에서 고객 목록 조회 (DB 영문 필드 → 화면 한글 필드 매핑)
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setIsLoading(true);
         const dbData = await getCompanies();
-
-        // 2. DB 데이터(영어) -> UI 데이터(한국어) 변환
-        const mappedData = dbData.map((item: any) => ({
+        const mapped: CustomerUI[] = dbData.map((item: any) => ({
           id: item.id,
           기업명: item.name,
           대표자: item.ceo_name || '-',
@@ -66,150 +67,127 @@ export function CustomerStatus() {
           지역구분: item.region || '-',
           업종: item.industry || '-',
           업태: item.biz_status || '-',
-          영업담당자: item.manager_name || '-', 
+          영업담당자: item.manager_name || '-',
           전화번호: item.tel || '-',
-          등록일: item.created_at || item.reg_date ? (item.created_at || item.reg_date).split('T')[0] : formattedDate,
-
-          매출규모: formatRevenue(item.recent_amount), 
+          등록일:
+            item.created_at || item.reg_date
+              ? (item.created_at || item.reg_date).split('T')[0]
+              : formattedDate,
+          매출규모: formatRevenue(item.recent_amount),
           직원수: item.recent_personnel ? `${item.recent_personnel}명` : '0명',
-          
-
-          // 고객담당자의 이름/번호/이메일
-          담당자명: item.contact_name || '-',
           휴대전화: item.contact_phone || '-',
           이메일: item.contact_email || '-',
-
-          비고: item.memo || ''
+          비고: item.memo || '',
         }));
-        
-        setCustomers(mappedData);
-
+        setCustomers(mapped);
       } catch (err) {
-        console.error("데이터 로딩 실패:", err);
+        console.error('데이터 로딩 실패:', err);
+      } finally {
+        setIsLoading(false);
       }
     };
+    void fetchData();
+  }, [formattedDate]);
 
-    fetchData();
-  }, []);
-
-
-  // 화면 높이에 따라 페이지당 항목 수 동적 계산
+  // 상세에서 돌아올 때 URL ?highlight=id 로 해당 행 강조
   useEffect(() => {
-    const calculateItemsPerPage = () => {
-      if (tableContainerRef.current) {
-        const containerHeight = tableContainerRef.current.clientHeight;
-        const headerHeight = 45; 
-        const paginationHeight = 44; 
-        const rowHeight = 42; 
-        const safetyMargin = 5; 
-        
-        const availableHeight = containerHeight - headerHeight - paginationHeight - safetyMargin;
-        const calculatedItems = Math.floor(availableHeight / rowHeight);
-        
-        if (calculatedItems > 0) {
-          const newItemsPerPage = Math.max(5, calculatedItems); 
-          setItemsPerPage(newItemsPerPage);
-        }
-      }
-    };
+    const param = searchParams.get('highlight');
+    if (param) {
+      setHighlightId(Number(param));
+      searchParams.delete('highlight');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
-    setTimeout(calculateItemsPerPage, 100);
-    window.addEventListener('resize', calculateItemsPerPage);
-    
-    return () => window.removeEventListener('resize', calculateItemsPerPage);
-  }, []);
+  const activeFilters = useMemo(
+    () =>
+      (Object.keys(filters) as Array<keyof FilterOptions>)
+        .filter((key) => filters[key])
+        .map((key) => ({ key, label: key, value: filters[key] })),
+    [filters],
+  );
 
-  // 활성화된 필터 목록
-  const activeFilters = useMemo(() => {
-    const active: { key: keyof FilterOptions; label: string; value: string }[] = [];
-    
-    (Object.keys(filters) as Array<keyof FilterOptions>).forEach((key) => {
-      if (filters[key]) {
-        active.push({
-          key,
-          label: key,
-          value: filters[key]
-        });
-      }
-    });
-    
-    return active;
-  }, [filters]);
-
-  const removeFilter = (key: keyof FilterOptions) => {
-    setFilters({
-      ...filters,
-      [key]: ''
-    });
-  };
-  
+  const removeFilter = (key: keyof FilterOptions) =>
+    setFilters((prev) => ({ ...prev, [key]: '' }));
 
   const filteredCustomers = useMemo(() => {
-    return customers.filter(customer => {
-      if (filters.기업명 && !customer.기업명.toLowerCase().includes(filters.기업명.toLowerCase())) return false;
-      if (filters.대표자 && !customer.대표자.toLowerCase().includes(filters.대표자.toLowerCase())) return false;
-      if (filters.주소 && !customer.주소.toLowerCase().includes(filters.주소.toLowerCase())) return false;
-      if (filters.지역구분 && customer.지역구분 !== filters.지역구분) return false;
-      if (filters.업종 && customer.업종 !== filters.업종) return false;
-      if (filters.영업담당자 && !customer.영업담당자.toLowerCase().includes(filters.영업담당자.toLowerCase())) return false;
-      
-      return true;
-    }).sort((a, b) => b.id - a.id);
+    return customers
+      .filter((c) => {
+        if (filters.기업명 && !c.기업명.toLowerCase().includes(filters.기업명.toLowerCase())) return false;
+        if (filters.대표자 && !c.대표자.toLowerCase().includes(filters.대표자.toLowerCase())) return false;
+        if (filters.주소 && !c.주소.toLowerCase().includes(filters.주소.toLowerCase())) return false;
+        if (filters.지역구분 && c.지역구분 !== filters.지역구분) return false;
+        if (filters.업종 && c.업종 !== filters.업종) return false;
+        if (filters.영업담당자 && !c.영업담당자.toLowerCase().includes(filters.영업담당자.toLowerCase())) return false;
+        return true;
+      })
+      .sort((a, b) => b.id - a.id);
   }, [customers, filters]);
 
-  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
-  const paginatedCustomers = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredCustomers.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredCustomers, currentPage, itemsPerPage]);
+  const { pagedRows, baseNo, size, pagination } = useClientPagedList(filteredCustomers);
 
-  const startNumber = filteredCustomers.length - (currentPage - 1) * itemsPerPage;
+  // 강조 대상이 있는 페이지로 한 번 이동
+  useEffect(() => {
+    if (highlightId == null) return;
+    const idx = filteredCustomers.findIndex((c) => c.id === highlightId);
+    if (idx >= 0) pagination.onPageChange(Math.floor(idx / size));
+    // 페이지 이동은 강조 대상이 정해질 때 한 번만 수행한다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightId, filteredCustomers, size]);
 
-  const handleFilterChange = (newFilters: FilterOptions) => {
-    setFilters(newFilters);
-    setCurrentPage(1);
-  };
-
-  useHighlightNavigation({
-    items: filteredCustomers,
-    itemsPerPage: itemsPerPage,
-    getId: (customer) => customer.id,
-    onPageChange: setCurrentPage,
-  });
-  const DEFAULT_INDUSTRIES = ['제조업', '도소매업', '서비스업', '건설업', '정보통신업', '공공기관'];
   const industries = useMemo(() => {
-    const industrySet = new Set(DEFAULT_INDUSTRIES);
-    
-    // DB에서 가져온 고객들의 업종을 하나씩 확인해서 추가
-    customers.forEach(c => {
-      if (c.업종 && c.업종.trim() !== '' && c.업종 !== '-') {
-        industrySet.add(c.업종);
-      }
+    const set = new Set(DEFAULT_INDUSTRIES);
+    customers.forEach((c) => {
+      if (c.업종 && c.업종.trim() !== '' && c.업종 !== '-') set.add(c.업종);
     });
-
-    return Array.from(industrySet).sort();
+    return Array.from(set).sort();
   }, [customers]);
 
+  const columns: ListColumn<CustomerUI>[] = [
+    { key: 'no', label: 'No.', width: '56px', render: (_row, index) => baseNo + index + 1 },
+    { key: '기업명', label: '기업명' },
+    { key: '대표자', label: '대표자' },
+    { key: '전화번호', label: '전화번호' },
+    {
+      key: '지역구분',
+      label: '지역구분',
+      render: (row) => (
+        <span
+          className="px-2 py-1 rounded text-xs font-semibold inline-block"
+          style={{ backgroundColor: `${getRegionColor(row.지역구분)}20`, color: getRegionColor(row.지역구분) }}
+        >
+          {row.지역구분}
+        </span>
+      ),
+    },
+    { key: '주소', label: '주소', align: 'left' },
+    { key: '업종', label: '업종' },
+    { key: '업태', label: '업태' },
+    { key: '매출규모', label: '최근 매출규모' },
+    { key: '직원수', label: '인원' },
+    { key: '영업담당자', label: '영업담당자' },
+    { key: '휴대전화', label: '휴대전화' },
+    { key: '이메일', label: '이메일' },
+  ];
+
   return (
-    <div className="min-h-[calc(100vh-80px)] bg-gradient-to-br from-blue-50 to-white h-[calc(100vh-80px)] flex flex-col">
+    <div className="min-h-[calc(100vh-80px)] bg-gradient-to-br from-blue-50 to-white flex flex-col">
       <div className="max-w-[1600px] mx-auto px-6 py-4 flex-1 flex flex-col w-full">
-        <ActiveFilterTags
-          filters={activeFilters}
-          onRemove={removeFilter}
-        />
-        
+        <ActiveFilterTags filters={activeFilters} onRemove={removeFilter} />
+
         <div className="mb-2 flex justify-between items-center">
           <div className="text-sm text-gray-700">
-            {formattedDate} <span className="ml-2 font-semibold">{filteredCustomers.length}개 기업</span>
+            {formattedDate}
+            <span className="ml-2 font-semibold">{filteredCustomers.length}개 기업</span>
           </div>
           <div className="flex space-x-4">
-            <button 
+            <button
               onClick={() => navigate('/customer-status/add')}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer"
             >
               고객 추가
             </button>
-            <button 
+            <button
               onClick={() => setIsFilterOpen(true)}
               className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition flex items-center space-x-2 cursor-pointer"
             >
@@ -219,23 +197,24 @@ export function CustomerStatus() {
           </div>
         </div>
 
-        <div className="flex-1 min-h-0" ref={tableContainerRef}>
-          <CustomerTable 
-            customers={paginatedCustomers} 
-            startIndex={(currentPage - 1) * itemsPerPage}
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            startNumber={startNumber}
-          />
-        </div>
+        <ListTable<CustomerUI>
+          columns={columns}
+          rows={pagedRows}
+          isLoading={isLoading}
+          minWidth="1100px"
+          emptyCell="-"
+          emptyText="등록된 고객이 없습니다."
+          highlightedKey={highlightId}
+          onRowClick={(row) => navigate(`/customer-status/${row.id}`)}
+          pagination={pagination}
+        />
       </div>
 
-      <CustomerFilterModal 
+      <CustomerFilterModal
         isOpen={isFilterOpen}
         onClose={() => setIsFilterOpen(false)}
         filters={filters}
-        onFilterChange={handleFilterChange}
+        onFilterChange={(next) => setFilters(next)}
         industries={industries}
       />
     </div>
