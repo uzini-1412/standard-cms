@@ -8,7 +8,7 @@ import { ActiveFilterTags } from '../../shared/ui/ActiveFilterTags';
 import { CustomerContactDetailModal } from '../Customer/CustomerContactDetailModal';
 import { ListTable, type ListColumn } from '../../shared/components/list/ListTable';
 import { useClientPagedList } from '../../shared/hooks/useClientPagedList';
-import { PageContainer, PageToolbar, CountBadge } from '../../shared/components/Page';
+import { PageContainer, PageToolbar, CountBadge, SearchBox } from '../../shared/components/Page';
 import { BTN } from '../../shared/ui/theme';
 import { getRegionColor } from '../../shared/utils/colorMapping';
 import { getAllManagers } from '../../api/manager';
@@ -29,6 +29,7 @@ export function ManagerStatus() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<ManagerWithCompany | null>(null);
   const [filters, setFilters] = useState<ManagerFilterOptions>(EMPTY_FILTERS);
+  const [searchTerm, setSearchTerm] = useState('');
   const [highlightId, setHighlightId] = useState<number | null>(null);
 
   const today = new Date();
@@ -87,11 +88,17 @@ export function ManagerStatus() {
     setFilters((prev) => ({ ...prev, [key]: '' }));
 
   const filteredManagers = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
     const result = managers.filter((m) => {
       if (filters.기업명 && !m.기업명.toLowerCase().includes(filters.기업명.toLowerCase())) return false;
       if (filters.담당자 && !m.담당자.toLowerCase().includes(filters.담당자.toLowerCase())) return false;
       if (filters.지역구분 && m.지역구분 !== filters.지역구분) return false;
       if (filters.업종 && !m.업종.toLowerCase().includes(filters.업종.toLowerCase())) return false;
+      if (
+        q &&
+        !`${m.기업명} ${m.담당자} ${m.부서} ${m.직책} ${m.휴대전화} ${m.이메일}`.toLowerCase().includes(q)
+      )
+        return false;
       return true;
     });
 
@@ -103,7 +110,7 @@ export function ManagerStatus() {
       result.sort((a, b) => a.id - b.id);
     }
     return result;
-  }, [managers, filters]);
+  }, [managers, filters, searchTerm]);
 
   const { pagedRows, baseNo, size, pagination } = useClientPagedList(filteredManagers);
 
@@ -155,10 +162,13 @@ export function ManagerStatus() {
           </>
         }
         actions={
-          <button onClick={() => setIsFilterOpen(true)} className={BTN.secondary}>
-            <ListFilter className="h-4 w-4" />
-            필터
-          </button>
+          <>
+            <SearchBox value={searchTerm} onChange={setSearchTerm} placeholder="기업·담당자·부서…" />
+            <button onClick={() => setIsFilterOpen(true)} className={BTN.secondary}>
+              <ListFilter className="h-4 w-4" />
+              필터
+            </button>
+          </>
         }
       />
 

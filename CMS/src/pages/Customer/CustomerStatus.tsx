@@ -8,7 +8,7 @@ import { QuickAddCustomerModal } from './QuickAddCustomerModal';
 import { ActiveFilterTags } from '../../shared/ui/ActiveFilterTags';
 import { ListTable, type ListColumn } from '../../shared/components/list/ListTable';
 import { useClientPagedList } from '../../shared/hooks/useClientPagedList';
-import { PageContainer, PageToolbar, CountBadge } from '../../shared/components/Page';
+import { PageContainer, PageToolbar, CountBadge, SearchBox } from '../../shared/components/Page';
 import { BTN } from '../../shared/ui/theme';
 import { getCompanies } from '../../api/company';
 import { formatRevenue } from '../../shared/utils/formatters';
@@ -52,6 +52,7 @@ export function CustomerStatus() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [filters, setFilters] = useState<FilterOptions>(EMPTY_FILTERS);
+  const [searchTerm, setSearchTerm] = useState('');
   const [highlightId, setHighlightId] = useState<number | null>(null);
 
   const today = new Date();
@@ -122,6 +123,7 @@ export function CustomerStatus() {
     setFilters((prev) => ({ ...prev, [key]: '' }));
 
   const filteredCustomers = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
     return customers
       .filter((c) => {
         if (filters.기업명 && !c.기업명.toLowerCase().includes(filters.기업명.toLowerCase())) return false;
@@ -130,10 +132,17 @@ export function CustomerStatus() {
         if (filters.지역구분 && c.지역구분 !== filters.지역구분) return false;
         if (filters.업종 && c.업종 !== filters.업종) return false;
         if (filters.영업담당자 && !c.영업담당자.toLowerCase().includes(filters.영업담당자.toLowerCase())) return false;
+        if (
+          q &&
+          !`${c.기업명} ${c.대표자} ${c.영업담당자} ${c.주소} ${c.업종} ${c.업태} ${c.전화번호} ${c.휴대전화} ${c.이메일}`
+            .toLowerCase()
+            .includes(q)
+        )
+          return false;
         return true;
       })
       .sort((a, b) => b.id - a.id);
-  }, [customers, filters]);
+  }, [customers, filters, searchTerm]);
 
   const { pagedRows, baseNo, size, pagination } = useClientPagedList(filteredCustomers);
 
@@ -193,6 +202,7 @@ export function CustomerStatus() {
         }
         actions={
           <>
+            <SearchBox value={searchTerm} onChange={setSearchTerm} placeholder="기업·대표자·담당자…" />
             <button onClick={() => setIsFilterOpen(true)} className={BTN.secondary}>
               <ListFilter className="h-4 w-4" />
               필터

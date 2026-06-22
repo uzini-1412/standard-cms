@@ -8,7 +8,7 @@ import { ConsultationDetailModal } from './ConsultationDetailModal';
 import { ActiveFilterTags } from '../../shared/ui/ActiveFilterTags';
 import { ListTable, type ListColumn } from '../../shared/components/list/ListTable';
 import { useClientPagedList } from '../../shared/hooks/useClientPagedList';
-import { PageContainer, PageToolbar, CountBadge } from '../../shared/components/Page';
+import { PageContainer, PageToolbar, CountBadge, SearchBox } from '../../shared/components/Page';
 import { BTN } from '../../shared/ui/theme';
 import { getRegionColor } from '../../shared/utils/colorMapping';
 import { getAllConsultations } from '../../api/consultation';
@@ -33,6 +33,7 @@ export function ConsultationHistory() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedConsultation, setSelectedConsultation] = useState<ConsultationWithCompany | null>(null);
   const [filters, setFilters] = useState<ConsultationFilterOptions>(EMPTY_FILTERS);
+  const [searchTerm, setSearchTerm] = useState('');
   const [highlightId, setHighlightId] = useState<number | null>(null);
 
   const today = new Date();
@@ -93,9 +94,15 @@ export function ConsultationHistory() {
     setFilters((prev) => ({ ...prev, [key]: '' }));
 
   const filteredConsultations = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
     const result = consultations.filter((c) => {
       if (filters.기업명 && !c.기업명.toLowerCase().includes(filters.기업명.toLowerCase())) return false;
       if (filters.지역구분 && c.지역구분 !== filters.지역구분) return false;
+      if (
+        q &&
+        !`${c.기업명} ${c.제목} ${c.자사참석자} ${c.고객참석자} ${c.상담내용}`.toLowerCase().includes(q)
+      )
+        return false;
       return true;
     });
 
@@ -109,7 +116,7 @@ export function ConsultationHistory() {
       result.sort((a, b) => a.id - b.id);
     }
     return result;
-  }, [consultations, filters]);
+  }, [consultations, filters, searchTerm]);
 
   const { pagedRows, baseNo, size, pagination } = useClientPagedList(filteredConsultations);
 
@@ -162,10 +169,13 @@ export function ConsultationHistory() {
           </>
         }
         actions={
-          <button onClick={() => setIsFilterOpen(true)} className={BTN.secondary}>
-            <ListFilter className="h-4 w-4" />
-            필터
-          </button>
+          <>
+            <SearchBox value={searchTerm} onChange={setSearchTerm} placeholder="기업·제목·참석자…" />
+            <button onClick={() => setIsFilterOpen(true)} className={BTN.secondary}>
+              <ListFilter className="h-4 w-4" />
+              필터
+            </button>
+          </>
         }
       />
 

@@ -8,7 +8,7 @@ import { ContractDetailModal } from './ContractDetailModal';
 import { ActiveFilterTags } from '../../shared/ui/ActiveFilterTags';
 import { ListTable, type ListColumn } from '../../shared/components/list/ListTable';
 import { useClientPagedList } from '../../shared/hooks/useClientPagedList';
-import { PageContainer, PageToolbar, CountBadge } from '../../shared/components/Page';
+import { PageContainer, PageToolbar, CountBadge, SearchBox } from '../../shared/components/Page';
 import { BTN } from '../../shared/ui/theme';
 import { getBusinessTypeColor } from '../../shared/utils/colorMapping';
 import { getAllContracts } from '../../api/contract';
@@ -30,6 +30,7 @@ export function ContractHistory() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [filters, setFilters] = useState<ContractFilterOptions>(EMPTY_FILTERS);
+  const [searchTerm, setSearchTerm] = useState('');
   const [highlightId, setHighlightId] = useState<number | null>(null);
 
   const today = new Date();
@@ -117,6 +118,7 @@ export function ContractHistory() {
     setFilters((prev) => ({ ...prev, [key]: '' }));
 
   const filteredContracts = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
     const result = contracts.filter((c) => {
       if (filters.기업명 && !c.기업명.toLowerCase().includes(filters.기업명.toLowerCase())) return false;
       if (filters.사업구분 && c.사업구분 !== filters.사업구분) return false;
@@ -128,6 +130,11 @@ export function ContractHistory() {
         const months = (c.개월수 || '').toLowerCase();
         if (!period.includes(term) && !months.includes(term)) return false;
       }
+      if (
+        q &&
+        !`${c.기업명} ${c.계약번호} ${c.프로젝트명} ${c.사업구분} ${c.컨설턴트 ?? ''}`.toLowerCase().includes(q)
+      )
+        return false;
       return true;
     });
 
@@ -141,7 +148,7 @@ export function ContractHistory() {
       result.sort((a, b) => a.id - b.id);
     }
     return result;
-  }, [contracts, filters]);
+  }, [contracts, filters, searchTerm]);
 
   const { pagedRows, baseNo, size, pagination } = useClientPagedList(filteredContracts);
 
@@ -192,10 +199,13 @@ export function ContractHistory() {
           </>
         }
         actions={
-          <button onClick={() => setIsFilterOpen(true)} className={BTN.secondary}>
-            <ListFilter className="h-4 w-4" />
-            필터
-          </button>
+          <>
+            <SearchBox value={searchTerm} onChange={setSearchTerm} placeholder="기업·계약번호·프로젝트…" />
+            <button onClick={() => setIsFilterOpen(true)} className={BTN.secondary}>
+              <ListFilter className="h-4 w-4" />
+              필터
+            </button>
+          </>
         }
       />
 
