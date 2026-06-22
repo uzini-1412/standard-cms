@@ -1,9 +1,9 @@
 // 상담일지 모달 옵션
 export const CONSULTATION_WRITER_OPTIONS = [
-  { value: '정태용', label: '정태용' },
-  { value: '김혜민', label: '김혜민' },
-  { value: '박정배', label: '박정배' },
-  { value: '김유진', label: '김유진' },
+  { value: '김영업', label: '김영업' },
+  { value: '이수진', label: '이수진' },
+  { value: '박민호', label: '박민호' },
+  { value: '최지은', label: '최지은' },
 ];
 
 // 계약정보 모달 옵션

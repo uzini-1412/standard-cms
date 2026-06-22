@@ -1,5 +1,5 @@
 import { Upload } from 'lucide-react';
-import { NEXSA_STAFF_OPTIONS } from '../constants/options';
+import { SALES_STAFF_OPTIONS } from '../constants/options';
 
 interface BasicInfoSectionProps {
   formData: {
@@ -79,7 +79,7 @@ export function BasicInfoSection({
             className="w-full border-none outline-none text-sm"
           >
             <option value="">선택</option>
-            {NEXSA_STAFF_OPTIONS.map(option => (
+            {SALES_STAFF_OPTIONS.map(option => (
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>

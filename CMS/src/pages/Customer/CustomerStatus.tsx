@@ -1,9 +1,10 @@
 // 고객 현황 목록 조회 — 표준 ListTable + useClientPagedList 기반
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ListFilter, Plus } from 'lucide-react';
 import { CustomerFilterModal, FilterOptions } from './CustomerFilterModal';
+import { QuickAddCustomerModal } from './QuickAddCustomerModal';
 import { ActiveFilterTags } from '../../shared/ui/ActiveFilterTags';
 import { ListTable, type ListColumn } from '../../shared/components/list/ListTable';
 import { useClientPagedList } from '../../shared/hooks/useClientPagedList';
@@ -49,6 +50,7 @@ export function CustomerStatus() {
   const [customers, setCustomers] = useState<CustomerUI[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [filters, setFilters] = useState<FilterOptions>(EMPTY_FILTERS);
   const [highlightId, setHighlightId] = useState<number | null>(null);
 
@@ -56,40 +58,47 @@ export function CustomerStatus() {
   const formattedDate = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
 
   // 서버에서 고객 목록 조회 (DB 영문 필드 → 화면 한글 필드 매핑)
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        const dbData = await getCompanies();
-        const mapped: CustomerUI[] = dbData.map((item: any) => ({
-          id: item.id,
-          기업명: item.name,
-          대표자: item.ceo_name || '-',
-          주소: item.address_main || '-',
-          지역구분: item.region || '-',
-          업종: item.industry || '-',
-          업태: item.biz_status || '-',
-          영업담당자: item.manager_name || '-',
-          전화번호: item.tel || '-',
-          등록일:
-            item.created_at || item.reg_date
-              ? (item.created_at || item.reg_date).split('T')[0]
-              : formattedDate,
-          매출규모: formatRevenue(item.recent_amount),
-          직원수: item.recent_personnel ? `${item.recent_personnel}명` : '0명',
-          휴대전화: item.contact_phone || '-',
-          이메일: item.contact_email || '-',
-          비고: item.memo || '',
-        }));
-        setCustomers(mapped);
-      } catch (err) {
-        console.error('데이터 로딩 실패:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    void fetchData();
+  const loadCustomers = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const dbData = await getCompanies();
+      const mapped: CustomerUI[] = dbData.map((item: any) => ({
+        id: item.id,
+        기업명: item.name,
+        대표자: item.ceo_name || '-',
+        주소: item.address_main || '-',
+        지역구분: item.region || '-',
+        업종: item.industry || '-',
+        업태: item.biz_status || '-',
+        영업담당자: item.manager_name || '-',
+        전화번호: item.tel || '-',
+        등록일:
+          item.created_at || item.reg_date
+            ? (item.created_at || item.reg_date).split('T')[0]
+            : formattedDate,
+        매출규모: formatRevenue(item.recent_amount),
+        직원수: item.recent_personnel ? `${item.recent_personnel}명` : '0명',
+        휴대전화: item.contact_phone || '-',
+        이메일: item.contact_email || '-',
+        비고: item.memo || '',
+      }));
+      setCustomers(mapped);
+    } catch (err) {
+      console.error('데이터 로딩 실패:', err);
+    } finally {
+      setIsLoading(false);
+    }
   }, [formattedDate]);
+
+  useEffect(() => {
+    void loadCustomers();
+  }, [loadCustomers]);
+
+  // 빠른 등록 성공 후: 목록 새로고침 + 신규 행 강조
+  const handleCreated = (newId: number) => {
+    if (newId) setHighlightId(newId);
+    void loadCustomers();
+  };
 
   // 상세에서 돌아올 때 URL ?highlight=id 로 해당 행 강조
   useEffect(() => {
@@ -188,7 +197,7 @@ export function CustomerStatus() {
               <ListFilter className="h-4 w-4" />
               필터
             </button>
-            <button onClick={() => navigate('/customer-status/add')} className={BTN.primary}>
+            <button onClick={() => setIsQuickAddOpen(true)} className={BTN.primary}>
               <Plus className="h-4 w-4" />
               고객 추가
             </button>
@@ -215,6 +224,14 @@ export function CustomerStatus() {
         onClose={() => setIsFilterOpen(false)}
         filters={filters}
         onFilterChange={(next) => setFilters(next)}
+        industries={industries}
+      />
+
+      <QuickAddCustomerModal
+        isOpen={isQuickAddOpen}
+        onClose={() => setIsQuickAddOpen(false)}
+        onCreated={handleCreated}
+        onOpenDetailForm={() => navigate('/customer-status/add')}
         industries={industries}
       />
     </PageContainer>

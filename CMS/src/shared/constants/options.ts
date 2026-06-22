@@ -9,6 +9,6 @@ export const STATUS_OPTIONS = [
   '상담중', '계약진행중', '계약완료', '보류', '실패'
 ].map(status => ({ value: status, label: status }));
 
-export const NEXSA_STAFF_OPTIONS = [
-  '정태용', '김혜민'
+export const SALES_STAFF_OPTIONS = [
+  '김영업', '이수진'
 ].map(staff => ({ value: staff, label: staff }));

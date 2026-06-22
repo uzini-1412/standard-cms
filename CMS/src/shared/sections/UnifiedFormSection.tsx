@@ -1,5 +1,5 @@
 import { Upload } from 'lucide-react';
-import { NEXSA_STAFF_OPTIONS, REGION_OPTIONS } from '../constants/options';
+import { SALES_STAFF_OPTIONS, REGION_OPTIONS } from '../constants/options';
 import type { SalesYear } from '../../types/customer';
 import { useState, useEffect } from 'react';
 
@@ -252,7 +252,7 @@ return (
             className="w-full border-none outline-none text-sm bg-transparent"
           >
             <option value="">선택</option>
-            {NEXSA_STAFF_OPTIONS?.map((option: any) => (
+            {SALES_STAFF_OPTIONS?.map((option: any) => (
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
