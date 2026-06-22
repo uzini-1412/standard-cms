@@ -1,388 +1,315 @@
-import { Link } from 'react-router-dom';
-import { useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, type ReactNode } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Building2, MessageSquare, FileText, Users, ArrowRight, LoaderCircle } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from 'recharts';
 import { getRegionColor, getBusinessTypeColor } from '../../shared/utils/colorMapping';
+import { PageContainer } from '../../shared/components/Page';
+import { StatCard } from '../../shared/components/dashboard/StatCard';
+import { CARD } from '../../shared/ui/theme';
+import { getCompanies } from '../../api/company';
+import { getAllConsultations } from '../../api/consultation';
+import { getAllContracts } from '../../api/contract';
+import { getAllManagers } from '../../api/manager';
 
-// [필수] API 함수들 임포트
-import { getCompanies } from '../../api/company';           // 1단계에서 만든 것
-import { getAllConsultations } from '../../api/consultation'; // 상담현황 때 만든 것
-import { getAllContracts } from '../../api/contract';       // 계약현황 때 만든 것
-import { getAllManagers } from '../../api/manager';         
+interface CompanyRow { id: number; 기업명: string; 등록일: string; 지역구분: string; 업종: string }
+interface ConsultationRow { id: number; customerId: number; 기업명: string; 제목: string; 작성자: string; 작성일: string }
+interface ContractRow { id: number; customerId: number; 기업명: string; 사업구분: string; 프로젝트명: string; 사업기간: string; 계약금액: string }
+interface ManagerRow { id: number; customerId: number; 기업명: string; 담당자: string; 부서: string; 직책: string; 휴대전화: string; 이메일: string }
+
+const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 
 export function Home() {
   const navigate = useNavigate();
-
-  // [변경] DB 데이터를 저장할 State
-  const [stats, setStats] = useState({
-    companies: [] as any[],
-    consultations: [] as any[],
-    contracts: [] as any[],
-    managers: [] as any[]
-  });
+  const [companies, setCompanies] = useState<CompanyRow[]>([]);
+  const [consultations, setConsultations] = useState<ConsultationRow[]>([]);
+  const [contracts, setContracts] = useState<ContractRow[]>([]);
+  const [managers, setManagers] = useState<ManagerRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchAllData = async () => {
+    const fetchAll = async () => {
       try {
         setIsLoading(true);
-        
-        // Promise.all로 병렬 요청 (속도 최적화)
-        const [companiesData, consultationsData, contractsData, managersData] = await Promise.all([
+        const [c, s, ct, m] = await Promise.all([
           getCompanies(),
           getAllConsultations(),
           getAllContracts(),
-          getAllManagers()
+          getAllManagers(),
         ]);
-
-        // 1. 회사 데이터 매핑
-        const mappedCompanies = companiesData.map((item: any) => ({
-          id: item.id,
-          기업명: item.name,
-          등록일: item.reg_date ? String(item.reg_date).split('T')[0] : '-',
-          지역구분: item.region || '-',
-          업종: item.industry || '-'
-        }));
-
-        // 2. 상담 데이터 매핑
-        const mappedConsultations = consultationsData.map((item: any) => ({
-          id: item.id,
-          customerId: item.company_id,
-          기업명: item.company_name || '(삭제된 회사)',
-          제목: item.title,
-          작성자: item.writer,
-          작성일: item.reg_date || '' 
-        }));
-
-        // 3. 계약 데이터 매핑 (기간 계산 포함)
-        const mappedContracts = contractsData.map((item: any) => {
-          // 기간 계산
-          let durationDisplay = '-';
-          if (item.start_date && item.end_date) {
-            const start = new Date(item.start_date);
-            const end = new Date(item.end_date);
-            const diffMonths = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
-            durationDisplay = `${diffMonths}개월`;
-          }
-
-          return {
-            id: item.id,
-            customerId: item.company_id,
-            기업명: item.company_name || '(삭제된 회사)',
-            사업구분: item.biz_type,
-            프로젝트명: item.project_name,
-            계약일: item.contract_date || '', // 정렬용
-            사업기간: durationDisplay,
-            계약금액: item.amount ? Number(item.amount).toLocaleString() : '0'
-          };
-        });
-
-        // 4. 담당자 데이터 매핑
-        const mappedManagers = managersData.map((item: any) => ({
-          id: item.id,
-          customerId: item.company_id,
-          기업명: item.company_name || '(삭제된 회사)',
-          이름: item.name,
-          부서: item.department,
-          직책: item.position,
-          휴대전화: item.mobile_phone,
-          이메일: item.email
-        }));
-
-        setStats({
-          companies: mappedCompanies,
-          consultations: mappedConsultations,
-          contracts: mappedContracts,
-          managers: mappedManagers
-        });
-
+        setCompanies(
+          c.map((i: any) => ({
+            id: i.id,
+            기업명: i.name,
+            등록일: i.reg_date ? String(i.reg_date).split('T')[0] : '',
+            지역구분: i.region || '미분류',
+            업종: i.industry || '미분류',
+          })),
+        );
+        setConsultations(
+          s.map((i: any) => ({
+            id: i.id,
+            customerId: i.company_id,
+            기업명: i.company_name || '(삭제된 회사)',
+            제목: i.title,
+            작성자: i.writer,
+            작성일: i.reg_date || '',
+          })),
+        );
+        setContracts(
+          ct.map((i: any) => ({
+            id: i.id,
+            customerId: i.company_id,
+            기업명: i.company_name || '(삭제된 회사)',
+            사업구분: i.biz_type || '기타',
+            프로젝트명: i.project_name,
+            사업기간:
+              i.start_date && i.end_date
+                ? `${(new Date(i.end_date).getFullYear() - new Date(i.start_date).getFullYear()) * 12 + (new Date(i.end_date).getMonth() - new Date(i.start_date).getMonth())}개월`
+                : '-',
+            계약금액: i.amount ? Number(i.amount).toLocaleString() : '0',
+          })),
+        );
+        setManagers(
+          m.map((i: any) => ({
+            id: i.id,
+            customerId: i.company_id,
+            기업명: i.company_name || '(삭제된 회사)',
+            담당자: i.name,
+            부서: i.department,
+            직책: i.position,
+            휴대전화: i.mobile_phone,
+            이메일: i.email,
+          })),
+        );
       } catch (error) {
-        console.error("대시보드 데이터 로딩 실패:", error);
+        console.error('대시보드 데이터 로딩 실패:', error);
       } finally {
         setIsLoading(false);
       }
     };
-
-    fetchAllData();
+    void fetchAll();
   }, []);
 
-  // --- 정렬 및 자르기 (최신 10개) ---
+  // 최근 6개월 신규 고객 추이
+  const monthlyTrend = useMemo(() => {
+    const now = new Date();
+    const buckets: { key: string; label: string; count: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      buckets.push({ key: monthKey(d), label: `${d.getMonth() + 1}월`, count: 0 });
+    }
+    const index = new Map(buckets.map((b) => [b.key, b]));
+    companies.forEach((c) => {
+      if (!c.등록일) return;
+      const b = index.get(c.등록일.slice(0, 7));
+      if (b) b.count += 1;
+    });
+    return buckets;
+  }, [companies]);
 
-  // 1. 최근 회사 (ID 역순 = 최신 등록순)
-  const recentCompanies = [...stats.companies]
-    .sort((a, b) => b.id - a.id)
-    .slice(0, 10);
+  // 지역별 고객 분포 (상위 6 + 기타)
+  const regionData = useMemo(() => {
+    const counts = new Map<string, number>();
+    companies.forEach((c) => counts.set(c.지역구분, (counts.get(c.지역구분) || 0) + 1));
+    const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+    const top = sorted.slice(0, 6).map(([name, value]) => ({ name, value }));
+    const rest = sorted.slice(6).reduce((sum, [, v]) => sum + v, 0);
+    if (rest > 0) top.push({ name: '기타', value: rest });
+    return top;
+  }, [companies]);
 
-  // 2. 최근 상담 (작성일 내림차순)
-  const recentConsultations = [...stats.consultations]
-    .sort((a, b) => new Date(b.작성일).getTime() - new Date(a.작성일).getTime())
-    .slice(0, 10);
-
-  // 3. 최근 계약 (id역순 = 최신순)
-  const recentContracts = [...stats.contracts]
-  .sort((a, b) => b.id - a.id) 
-  .slice(0, 10);
-
-  // 4. 최근 담당자 (ID 역순 = 최신순)
-  const recentContacts = [...stats.managers]
-    .sort((a, b) => b.id - a.id)
-    .slice(0, 10);
-
+  const recent = <T extends { id: number }>(rows: T[]) => [...rows].sort((a, b) => b.id - a.id).slice(0, 6);
 
   if (isLoading) {
-    return <div className="flex justify-center items-center h-[calc(100vh-80px)]">데이터를 불러오는 중입니다...</div>;
+    return (
+      <PageContainer>
+        <div className="flex h-[60vh] items-center justify-center gap-2 text-slate-500">
+          <LoaderCircle className="h-5 w-5 animate-spin text-[#4A5CC7]" />
+          데이터를 불러오는 중입니다...
+        </div>
+      </PageContainer>
+    );
   }
 
-return (
-    <div className="min-h-[calc(100vh-80px)] bg-gradient-to-br from-blue-50 to-white">
-      <div className="w-full max-w-[1600px] mx-auto px-4 md:px-6 py-6">
-        
-        {/* 통계 카드 */}
-        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
-          {/* 총 고객사 */}
-          <div className="bg-white rounded-lg shadow-md p-[22px]">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1 font-semibold">총 고객사</p>
-                <p className="text-3xl font-bold text-blue-600">{stats.companies.length}</p>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-            </div>
-          </div>
+  return (
+    <PageContainer>
+      <h1 className="mb-5 text-xl font-bold text-slate-800">대시보드</h1>
 
-          {/* 상담 건수 */}
-          <div className="bg-white rounded-lg shadow-md p-[22px]">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1 font-semibold">상담 건수</p>
-                <p className="text-3xl font-bold text-green-600">{stats.consultations.length}</p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                </svg>
-              </div>
-            </div>
-          </div>
+      {/* 지표 카드 */}
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="총 고객사" value={companies.length} icon={Building2} tone="indigo" onClick={() => navigate('/customer-status')} />
+        <StatCard label="상담 건수" value={consultations.length} icon={MessageSquare} tone="emerald" onClick={() => navigate('/consultation-history')} />
+        <StatCard label="총 계약" value={contracts.length} icon={FileText} tone="violet" onClick={() => navigate('/contract-history')} />
+        <StatCard label="고객 담당자" value={managers.length} icon={Users} tone="amber" onClick={() => navigate('/manager-status')} />
+      </div>
 
-          {/* 총 계약 */}
-          <div className="bg-white rounded-lg shadow-md p-[22px]">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1 font-semibold">총 계약</p>
-                <p className="text-3xl font-bold text-purple-600">{stats.contracts.length}</p>
-              </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          {/* 총 고객 담당자 */}
-          <div className="bg-white rounded-lg shadow-md p-[22px]">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1 font-semibold">총 고객 담당자</p>
-                <p className="text-3xl font-bold text-orange-600">{stats.managers.length}</p>
-              </div>
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-            </div>
+      {/* 차트 */}
+      <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className={`${CARD} p-5 lg:col-span-2`}>
+          <h2 className="mb-4 text-sm font-semibold text-slate-700">최근 6개월 신규 고객 추이</h2>
+          <div className="h-[260px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={monthlyTrend} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="fillIndigo" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#4A5CC7" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#4A5CC7" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#eef2f7" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }}
+                  formatter={(v: number) => [`${v}건`, '신규 고객']}
+                />
+                <Area type="monotone" dataKey="count" stroke="#4A5CC7" strokeWidth={2.5} fill="url(#fillIndigo)" />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
-        {/* 하단 리스트 영역 */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          
-          <div className="space-y-6">
-            
-            {/* 최근 등록한 회사 리스트 */}
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="px-4 py-3 flex justify-between items-center border-b-2 border-blue-600">
-                <h2 className="text-lg font-bold text-blue-600">최근 등록한 회사</h2>
-                <Link to="/customer-status" className="text-sm text-blue-600 hover:text-blue-800 transition font-medium">전체보기 →</Link>
-              </div>
-              
-              <div className="h-[275px] overflow-y-auto overflow-x-auto scrollbar-hide">
-                <table className="w-full min-w-[500px]">
-                  <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
-                    <tr>
-                      <th className="px-1 py-3 text-center text-sm font-semibold text-gray-600 whitespace-nowrap">등록일</th>
-                      <th className="px-1 py-3 text-center text-sm font-semibold text-gray-600 whitespace-nowrap">기업명</th>
-                      <th className="px-1 py-3 text-center text-sm font-semibold text-gray-600 whitespace-nowrap">지역구분</th>
-                      <th className="px-1 py-3 text-center text-sm font-semibold text-gray-600 whitespace-nowrap">업종</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {recentCompanies.map((company, index) => (
-                      <tr 
-                        key={company.id} 
-                        className={`hover:bg-blue-50 transition cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
-                        onClick={() => navigate(`/customer-status?highlight=${company.id}`)}
-                      >
-                        <td className="px-1 py-2 text-xs text-gray-600 text-center max-w-0 truncate">{company.등록일}</td>
-                        <td className="px-1 py-2 text-xs text-gray-900 text-center max-w-0 truncate">{company.기업명}</td>
-                        <td className="px-1 py-2 text-center max-w-0 truncate">
-                          <span className="px-2 py-1 rounded text-xs font-semibold inline-block whitespace-nowrap" style={{ backgroundColor: `${getRegionColor(company.지역구분)}20`, color: getRegionColor(company.지역구분) }}>
-                            {company.지역구분}
-                          </span>
-                        </td>
-                        <td className="px-1 py-2 text-xs text-gray-600 text-center max-w-0 truncate">{company.업종}</td>
-                      </tr>
+        <div className={`${CARD} p-5`}>
+          <h2 className="mb-4 text-sm font-semibold text-slate-700">지역별 고객 분포</h2>
+          <div className="h-[260px]">
+            {regionData.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-sm text-slate-400">데이터 없음</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={regionData} dataKey="value" nameKey="name" cx="50%" cy="45%" innerRadius={50} outerRadius={80} paddingAngle={2}>
+                    {regionData.map((entry) => (
+                      <Cell key={entry.name} fill={getRegionColor(entry.name)} />
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* 최근 등록한 상담 리스트 */}
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="px-4 py-3 flex justify-between items-center border-b-2 border-blue-600">
-                <h2 className="text-lg font-bold text-blue-600">최근 등록한 상담</h2>
-                <Link to="/consultation-history" className="text-sm text-blue-600 hover:text-blue-800 transition font-medium">전체보기 →</Link>
-              </div>
-              <div className="h-[275px] overflow-y-auto overflow-x-auto scrollbar-hide">
-                <table className="w-full min-w-[500px] table-fixed">
-                  <colgroup>
-                    <col className="w-[20%]" />
-                    <col className="w-[30%]" />
-                    <col className="w-[30%]" />
-                    <col className="w-[20%]" />
-                  </colgroup>
-                  <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
-                    <tr>
-                      <th className="px-1 py-3 text-center text-sm font-semibold text-gray-600 whitespace-nowrap">작성일</th>
-                      <th className="px-1 py-3 text-center text-sm font-semibold text-gray-600 whitespace-nowrap">기업명</th>
-                      <th className="px-1 py-3 text-center text-sm font-semibold text-gray-600 whitespace-nowrap">제목</th>
-                      <th className="px-1 py-3 text-center text-sm font-semibold text-gray-600 whitespace-nowrap">작성자</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {recentConsultations.map((consultation, index) => (
-                      <tr 
-                        key={consultation.id} 
-                        className={`hover:bg-blue-50 transition cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
-                        onClick={() => navigate(`/consultation-history?highlightCustomerId=${consultation.customerId}&highlightConsultationId=${consultation.id}`)}
-                      >
-                        <td className="px-1 py-3 text-xs text-gray-600 text-center max-w-0 truncate">
-                          {consultation.작성일 ? String(consultation.작성일).split('T')[0] : '-'}
-                        </td>
-                        <td className="px-1 py-3 text-xs text-gray-900 text-center max-w-0 truncate">{consultation.기업명}</td>
-                        <td className="px-1 py-3 text-xs text-gray-600 text-center max-w-0 truncate">{consultation.제목}</td>
-                        <td className="px-1 py-3 text-xs text-gray-600 text-center max-w-0 truncate">{consultation.작성자}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            
-            {/* 최근 등록한 담당자 리스트 */}
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="px-4 py-3 flex justify-between items-center border-b-2 border-blue-600">
-                <h2 className="text-lg font-bold text-blue-600">등록된 고객 담당자</h2>
-                <Link to="/manager-status" className="text-sm text-blue-600 hover:text-blue-800 transition font-medium">전체보기 →</Link>
-              </div>
-              <div className="h-[275px] overflow-y-auto overflow-x-auto scrollbar-hide">
-                <table className="w-full min-w-[600px] table-fixed">
-                  <colgroup>
-                    <col className="w-[22%]" /> 
-                    <col className="w-[16%]" /> 
-                    <col className="w-[12%]" /> 
-                    <col className="w-[12%]" /> 
-                    <col className="w-[18%]" />
-                    <col className="w-[20%]" />
-                  </colgroup>
-                  <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
-                    <tr>
-                      <th className="pl-4 pr-1 py-3 text-left text-sm font-semibold text-gray-600 whitespace-nowrap">기업명</th>
-                      <th className="px-1 py-3 text-center text-sm font-semibold text-gray-600 whitespace-nowrap">담당자</th>
-                      <th className="px-1 py-3 text-center text-sm font-semibold text-gray-600 whitespace-nowrap">부서</th>
-                      <th className="px-1 py-3 text-center text-sm font-semibold text-gray-600 whitespace-nowrap">직책</th>
-                      <th className="px-1 py-3 text-center text-sm font-semibold text-gray-600 whitespace-nowrap">번호</th>
-                      <th className="px-1 py-3 text-center text-sm font-semibold text-gray-600 whitespace-nowrap">메일</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {recentContacts.map((contact, index) => (
-                      <tr 
-                        key={contact.id} 
-                        className={`hover:bg-blue-50 transition cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
-                        onClick={() => navigate(`/manager-status?highlightCustomerId=${contact.customerId}&highlightContactId=${contact.id}`)}
-                      >
-                        <td className="pl-4 pr-1 py-3 text-xs text-gray-900 text-left max-w-0 truncate">{contact.기업명}</td>
-                        <td className="px-1 py-3 text-xs text-gray-900 text-center max-w-0 truncate">{contact.이름}</td>
-                        <td className="px-1 py-3 text-xs text-gray-600 text-center max-w-0 truncate">{contact.부서 || '-'}</td>
-                        <td className="px-1 py-3 text-xs text-gray-600 text-center max-w-0 truncate">{contact.직책 || '-'}</td>
-                        <td className="px-1 py-3 text-xs text-gray-600 text-center max-w-0 truncate">{contact.휴대전화 || '-'}</td>
-                        <td className="px-1 py-3 text-xs text-gray-600 text-center max-w-0 truncate">{contact.이메일 || '-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* 최근 등록한 계약 리스트 */}
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="px-4 py-3 flex justify-between items-center border-b-2 border-blue-600">
-                <h2 className="text-lg font-bold text-blue-600">최근 등록한 계약</h2>
-                <Link to="/contract-history" className="text-sm text-blue-600 hover:text-blue-800 transition font-medium">전체보기 →</Link>
-              </div>
-              <div className="h-[275px] overflow-y-auto overflow-x-auto scrollbar-hide">
-                <table className="w-full min-w-[600px] table-fixed">
-                  <colgroup>
-                    <col className="w-[12%]" />
-                    <col className="w-[25%]" />
-                    <col className="w-[25%]" />
-                    <col className="w-[15%]" />
-                    <col className="w-[23%]" />
-                  </colgroup>
-                  <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
-                    <tr>
-                      <th className="px-1 py-3 text-center text-sm font-semibold text-gray-600 whitespace-nowrap">사업구분</th>
-                      <th className="px-1 py-3 text-center text-sm font-semibold text-gray-600 whitespace-nowrap">기업명</th>
-                      <th className="px-1 py-3 text-center text-sm font-semibold text-gray-600 whitespace-nowrap">프로젝트명</th>
-                      <th className="px-1 py-3 text-center text-sm font-semibold text-gray-600 whitespace-nowrap">사업기간</th>
-                      <th className="px-1 py-3 text-center text-sm font-semibold text-gray-600 whitespace-nowrap">금액</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {recentContracts.map((contract, index) => (
-                      <tr 
-                        key={contract.id} 
-                        className={`hover:bg-blue-50 transition cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
-                        onClick={() => navigate(`/contract-history?highlightCustomerId=${contract.customerId}&highlightContractId=${contract.id}`)}
-                      >
-                        <td className="px-1 py-2 text-center">
-                          <span className="px-2 py-1 rounded text-xs inline-block whitespace-nowrap" style={{ backgroundColor: `${getBusinessTypeColor(contract.사업구분)}20`, color: getBusinessTypeColor(contract.사업구분) }}>
-                            {contract.사업구분}
-                          </span>
-                        </td>
-                        <td className="px-1 py-2 text-xs text-gray-900 text-center max-w-0 truncate">{contract.기업명}</td>
-                        <td className="px-1 py-2 text-xs text-gray-600 text-center max-w-0 truncate">{contract.프로젝트명}</td>
-                        <td className="px-1 py-2 text-xs text-gray-600 text-center max-w-0 truncate ">{contract.사업기간}</td>
-                        <td className="px-1 py-2 text-xs text-gray-900 text-center max-w-0 truncate">{contract.계약금액}원</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                  </Pie>
+                  <Tooltip formatter={(v: number, n) => [`${v}개사`, n]} contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
       </div>
+
+      {/* 최근 목록 */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <RecentCard title="최근 등록한 고객사" to="/customer-status" headers={['등록일', '기업명', '지역', '업종']}>
+          {recent(companies).map((c) => (
+            <Row key={c.id} onClick={() => navigate(`/customer-status?highlight=${c.id}`)}>
+              <Cell2 muted>{c.등록일 || '-'}</Cell2>
+              <Cell2 strong>{c.기업명}</Cell2>
+              <Cell2><RegionBadge region={c.지역구분} /></Cell2>
+              <Cell2 muted>{c.업종}</Cell2>
+            </Row>
+          ))}
+        </RecentCard>
+
+        <RecentCard title="최근 등록한 상담" to="/consultation-history" headers={['작성일', '기업명', '제목', '작성자']}>
+          {recent(consultations).map((s) => (
+            <Row key={s.id} onClick={() => navigate(`/consultation-history?highlightCustomerId=${s.customerId}&highlightConsultationId=${s.id}`)}>
+              <Cell2 muted>{s.작성일 ? String(s.작성일).split('T')[0] : '-'}</Cell2>
+              <Cell2 strong>{s.기업명}</Cell2>
+              <Cell2 muted>{s.제목}</Cell2>
+              <Cell2 muted>{s.작성자}</Cell2>
+            </Row>
+          ))}
+        </RecentCard>
+
+        <RecentCard title="최근 등록한 계약" to="/contract-history" headers={['사업구분', '기업명', '프로젝트명', '금액']}>
+          {recent(contracts).map((ct) => (
+            <Row key={ct.id} onClick={() => navigate(`/contract-history?highlightCustomerId=${ct.customerId}&highlightContractId=${ct.id}`)}>
+              <Cell2>
+                <span className="inline-block rounded px-2 py-0.5 text-xs font-semibold" style={{ backgroundColor: `${getBusinessTypeColor(ct.사업구분)}20`, color: getBusinessTypeColor(ct.사업구분) }}>
+                  {ct.사업구분}
+                </span>
+              </Cell2>
+              <Cell2 strong>{ct.기업명}</Cell2>
+              <Cell2 muted>{ct.프로젝트명}</Cell2>
+              <Cell2 muted>{ct.계약금액}원</Cell2>
+            </Row>
+          ))}
+        </RecentCard>
+
+        <RecentCard title="등록된 고객 담당자" to="/manager-status" headers={['기업명', '담당자', '부서', '연락처']}>
+          {recent(managers).map((m) => (
+            <Row key={m.id} onClick={() => navigate(`/manager-status?highlightCustomerId=${m.customerId}&highlightContactId=${m.id}`)}>
+              <Cell2 strong>{m.기업명}</Cell2>
+              <Cell2>{m.담당자}</Cell2>
+              <Cell2 muted>{m.부서 || '-'}</Cell2>
+              <Cell2 muted>{m.휴대전화 || '-'}</Cell2>
+            </Row>
+          ))}
+        </RecentCard>
+      </div>
+    </PageContainer>
+  );
+}
+
+/* ---------- 최근 목록 카드 (대시보드 전용) ---------- */
+
+function RecentCard({ title, to, headers, children }: { title: string; to: string; headers: string[]; children: ReactNode }) {
+  return (
+    <div className={`${CARD} overflow-hidden`}>
+      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+        <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
+        <Link to={to} className="flex items-center gap-1 text-xs font-medium text-[#4A5CC7] hover:underline">
+          전체보기 <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+      <div className="max-h-[280px] overflow-auto">
+        <table className="w-full table-fixed">
+          <thead className="sticky top-0 bg-slate-50">
+            <tr>
+              {headers.map((h) => (
+                <th key={h} className="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold text-slate-500">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>{children}</tbody>
+        </table>
+      </div>
     </div>
+  );
+}
+
+function Row({ children, onClick }: { children: ReactNode; onClick: () => void }) {
+  return (
+    <tr className="cursor-pointer border-t border-slate-100 transition hover:bg-indigo-50/50" onClick={onClick}>
+      {children}
+    </tr>
+  );
+}
+
+function Cell2({ children, muted, strong }: { children: ReactNode; muted?: boolean; strong?: boolean }) {
+  return (
+    <td
+      className={`truncate px-3 py-2.5 text-xs ${
+        strong ? 'font-medium text-slate-800' : muted ? 'text-slate-500' : 'text-slate-700'
+      }`}
+    >
+      {children}
+    </td>
+  );
+}
+
+function RegionBadge({ region }: { region: string }) {
+  return (
+    <span className="inline-block rounded px-2 py-0.5 text-xs font-semibold" style={{ backgroundColor: `${getRegionColor(region)}20`, color: getRegionColor(region) }}>
+      {region}
+    </span>
   );
 }

@@ -2,11 +2,13 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ListFilter } from 'lucide-react';
+import { ListFilter, Plus } from 'lucide-react';
 import { CustomerFilterModal, FilterOptions } from './CustomerFilterModal';
 import { ActiveFilterTags } from '../../shared/ui/ActiveFilterTags';
 import { ListTable, type ListColumn } from '../../shared/components/list/ListTable';
 import { useClientPagedList } from '../../shared/hooks/useClientPagedList';
+import { PageContainer, PageToolbar, CountBadge } from '../../shared/components/Page';
+import { BTN } from '../../shared/ui/theme';
 import { getCompanies } from '../../api/company';
 import { formatRevenue } from '../../shared/utils/formatters';
 import { getRegionColor } from '../../shared/utils/colorMapping';
@@ -171,44 +173,42 @@ export function CustomerStatus() {
   ];
 
   return (
-    <div className="min-h-[calc(100vh-80px)] bg-gradient-to-br from-blue-50 to-white flex flex-col">
-      <div className="max-w-[1600px] mx-auto px-6 py-4 flex-1 flex flex-col w-full">
-        <ActiveFilterTags filters={activeFilters} onRemove={removeFilter} />
-
-        <div className="mb-2 flex justify-between items-center">
-          <div className="text-sm text-gray-700">
-            {formattedDate}
-            <span className="ml-2 font-semibold">{filteredCustomers.length}개 기업</span>
-          </div>
-          <div className="flex space-x-4">
-            <button
-              onClick={() => navigate('/customer-status/add')}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer"
-            >
+    <PageContainer>
+      <PageToolbar
+        title="고객 현황"
+        meta={
+          <>
+            <CountBadge>{filteredCustomers.length}개 기업</CountBadge>
+            <span className="hidden text-sm text-slate-400 sm:inline">{formattedDate} 기준</span>
+          </>
+        }
+        actions={
+          <>
+            <button onClick={() => setIsFilterOpen(true)} className={BTN.secondary}>
+              <ListFilter className="h-4 w-4" />
+              필터
+            </button>
+            <button onClick={() => navigate('/customer-status/add')} className={BTN.primary}>
+              <Plus className="h-4 w-4" />
               고객 추가
             </button>
-            <button
-              onClick={() => setIsFilterOpen(true)}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition flex items-center space-x-2 cursor-pointer"
-            >
-              <ListFilter className="w-4 h-4" />
-              <span>필터</span>
-            </button>
-          </div>
-        </div>
+          </>
+        }
+      />
 
-        <ListTable<CustomerUI>
-          columns={columns}
-          rows={pagedRows}
-          isLoading={isLoading}
-          minWidth="1100px"
-          emptyCell="-"
-          emptyText="등록된 고객이 없습니다."
-          highlightedKey={highlightId}
-          onRowClick={(row) => navigate(`/customer-status/${row.id}`)}
-          pagination={pagination}
-        />
-      </div>
+      <ActiveFilterTags filters={activeFilters} onRemove={removeFilter} />
+
+      <ListTable<CustomerUI>
+        columns={columns}
+        rows={pagedRows}
+        isLoading={isLoading}
+        minWidth="1100px"
+        emptyCell="-"
+        emptyText="등록된 고객이 없습니다."
+        highlightedKey={highlightId}
+        onRowClick={(row) => navigate(`/customer-status/${row.id}`)}
+        pagination={pagination}
+      />
 
       <CustomerFilterModal
         isOpen={isFilterOpen}
@@ -217,6 +217,6 @@ export function CustomerStatus() {
         onFilterChange={(next) => setFilters(next)}
         industries={industries}
       />
-    </div>
+    </PageContainer>
   );
 }

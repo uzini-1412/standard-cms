@@ -8,6 +8,8 @@ import { ContractDetailModal } from './ContractDetailModal';
 import { ActiveFilterTags } from '../../shared/ui/ActiveFilterTags';
 import { ListTable, type ListColumn } from '../../shared/components/list/ListTable';
 import { useClientPagedList } from '../../shared/hooks/useClientPagedList';
+import { PageContainer, PageToolbar, CountBadge } from '../../shared/components/Page';
+import { BTN } from '../../shared/ui/theme';
 import { getBusinessTypeColor } from '../../shared/utils/colorMapping';
 import { getAllContracts } from '../../api/contract';
 import { Contract, ContractWithCompany, ContractFilterOptions } from '../../types/contract';
@@ -180,38 +182,36 @@ export function ContractHistory() {
   ];
 
   return (
-    <div className="min-h-[calc(100vh-80px)] bg-gradient-to-br from-blue-50 to-white flex flex-col">
-      <div className="max-w-[1600px] mx-auto px-6 py-4 flex-1 flex flex-col w-full">
-        <ActiveFilterTags filters={activeFilters} onRemove={removeFilter} />
+    <PageContainer>
+      <PageToolbar
+        title="계약 현황"
+        meta={
+          <>
+            <CountBadge>{filteredContracts.length}건 계약</CountBadge>
+            <span className="hidden text-sm text-slate-400 sm:inline">{formattedDate} 기준</span>
+          </>
+        }
+        actions={
+          <button onClick={() => setIsFilterOpen(true)} className={BTN.secondary}>
+            <ListFilter className="h-4 w-4" />
+            필터
+          </button>
+        }
+      />
 
-        <div className="mb-2 flex justify-between items-center">
-          <div className="text-sm text-gray-700">
-            {formattedDate}
-            <span className="ml-2 font-semibold">{filteredContracts.length}건 계약</span>
-          </div>
-          <div className="flex space-x-4">
-            <button
-              onClick={() => setIsFilterOpen(true)}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition flex items-center space-x-2 cursor-pointer"
-            >
-              <ListFilter className="w-4 h-4" />
-              <span>필터</span>
-            </button>
-          </div>
-        </div>
+      <ActiveFilterTags filters={activeFilters} onRemove={removeFilter} />
 
-        <ListTable<ContractWithCompany>
-          columns={columns}
-          rows={pagedRows}
-          isLoading={isLoading}
-          minWidth="1500px"
-          emptyCell="-"
-          emptyText="계약 내역이 없습니다."
-          highlightedKey={highlightId}
-          onRowClick={(row) => setSelectedContract(row)}
-          pagination={pagination}
-        />
-      </div>
+      <ListTable<ContractWithCompany>
+        columns={columns}
+        rows={pagedRows}
+        isLoading={isLoading}
+        minWidth="1500px"
+        emptyCell="-"
+        emptyText="계약 내역이 없습니다."
+        highlightedKey={highlightId}
+        onRowClick={(row) => setSelectedContract(row)}
+        pagination={pagination}
+      />
 
       <ContractFilterModal
         isOpen={isFilterOpen}
@@ -225,6 +225,6 @@ export function ContractHistory() {
         onClose={() => setSelectedContract(null)}
         data={selectedContract}
       />
-    </div>
+    </PageContainer>
   );
 }

@@ -8,6 +8,8 @@ import { ConsultationDetailModal } from './ConsultationDetailModal';
 import { ActiveFilterTags } from '../../shared/ui/ActiveFilterTags';
 import { ListTable, type ListColumn } from '../../shared/components/list/ListTable';
 import { useClientPagedList } from '../../shared/hooks/useClientPagedList';
+import { PageContainer, PageToolbar, CountBadge } from '../../shared/components/Page';
+import { BTN } from '../../shared/ui/theme';
 import { getRegionColor } from '../../shared/utils/colorMapping';
 import { getAllConsultations } from '../../api/consultation';
 import { ConsultationWithCompany } from '../../types/consultation';
@@ -150,38 +152,36 @@ export function ConsultationHistory() {
   ];
 
   return (
-    <div className="min-h-[calc(100vh-80px)] bg-gradient-to-br from-blue-50 to-white flex flex-col">
-      <div className="max-w-[1600px] mx-auto px-6 py-4 flex-1 flex flex-col w-full">
-        <ActiveFilterTags filters={activeFilters} onRemove={removeFilter} />
+    <PageContainer>
+      <PageToolbar
+        title="상담 현황"
+        meta={
+          <>
+            <CountBadge>{filteredConsultations.length}건 상담</CountBadge>
+            <span className="hidden text-sm text-slate-400 sm:inline">{formattedDate} 기준</span>
+          </>
+        }
+        actions={
+          <button onClick={() => setIsFilterOpen(true)} className={BTN.secondary}>
+            <ListFilter className="h-4 w-4" />
+            필터
+          </button>
+        }
+      />
 
-        <div className="mb-2 flex justify-between items-center">
-          <div className="text-sm text-gray-700">
-            {formattedDate}
-            <span className="ml-2 font-semibold">{filteredConsultations.length}건 상담</span>
-          </div>
-          <div className="flex space-x-4">
-            <button
-              onClick={() => setIsFilterOpen(true)}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition flex items-center space-x-2 cursor-pointer"
-            >
-              <ListFilter className="w-4 h-4" />
-              <span>필터</span>
-            </button>
-          </div>
-        </div>
+      <ActiveFilterTags filters={activeFilters} onRemove={removeFilter} />
 
-        <ListTable<ConsultationWithCompany>
-          columns={columns}
-          rows={pagedRows}
-          isLoading={isLoading}
-          minWidth="1200px"
-          emptyCell="-"
-          emptyText="상담 내역이 없습니다."
-          highlightedKey={highlightId}
-          onRowClick={handleRowClick}
-          pagination={pagination}
-        />
-      </div>
+      <ListTable<ConsultationWithCompany>
+        columns={columns}
+        rows={pagedRows}
+        isLoading={isLoading}
+        minWidth="1200px"
+        emptyCell="-"
+        emptyText="상담 내역이 없습니다."
+        highlightedKey={highlightId}
+        onRowClick={handleRowClick}
+        pagination={pagination}
+      />
 
       <ConsultationFilterModal
         isOpen={isFilterOpen}
@@ -196,6 +196,6 @@ export function ConsultationHistory() {
         기업명={selectedConsultation?.기업명 || ''}
         지역구분={selectedConsultation?.지역구분 || ''}
       />
-    </div>
+    </PageContainer>
   );
 }
