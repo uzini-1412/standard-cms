@@ -66,9 +66,18 @@ cms-portfolio/
 
 ### 데이터베이스
 스키마와 샘플 데이터는 [`server/db/`](server/db) 에 있습니다.
+
+**방법 A — Docker (권장, 한 줄):** 기존 MySQL 과 충돌하지 않는 격리 컨테이너(호스트 포트 `13306`)를
+띄우고 스키마·시드를 자동 적재합니다.
+```bash
+docker compose up -d
+# server/.env 예시:  DB_HOST=localhost  DB_PORT=13306  DB_USER=root  DB_PASSWORD=cms_local_pw  DB_NAME=cms_db
+```
+
+**방법 B — 기존 MySQL 에 직접 적재:**
 ```bash
 mysql -u root -p < server/db/schema.sql   # cms_db + 테이블 생성
-mysql -u root -p < server/db/seed.sql      # (선택) 샘플 데이터 — 대시보드/목록이 채워짐
+mysql -u root -p < server/db/seed.sql      # (선택) 샘플 데이터
 ```
 > `seed.sql` 의 등록일·계약일은 실행 시점 기준 상대값이라 대시보드 차트가 항상 최근 데이터로 표시됩니다.
 > 모든 샘플 데이터는 가상의 값입니다.

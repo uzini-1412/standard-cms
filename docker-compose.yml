@@ -1,0 +1,30 @@
+# 로컬 개발용 MySQL — 한 줄로 DB 띄우기.
+#   docker compose up -d
+# 최초 기동 시 server/db/schema.sql → seed.sql 이 자동 적재된다(데이터 볼륨이 비어있을 때만).
+# 다시 처음부터 적재하려면:  docker compose down -v && docker compose up -d
+#
+# 기존에 쓰던 MySQL 과 충돌하지 않도록 호스트 포트는 13306 을 쓴다(컨테이너 내부는 3306).
+# 접속 정보는 server/.env 의 DB_* 값과 일치시킨다.
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: cms-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: cms_local_pw
+      MYSQL_DATABASE: cms_db
+    ports:
+      - "13306:3306"
+    volumes:
+      - cms_mysql_data:/var/lib/mysql
+      - ./server/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./server/db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pcms_local_pw"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  cms_mysql_data:
