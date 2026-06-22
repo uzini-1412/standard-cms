@@ -46,6 +46,7 @@ cms-portfolio/
 └─ server/                  # 백엔드 (Express + MySQL)
    ├─ routes/               # 라우팅
    ├─ controllers/          # 비즈니스 로직
+   ├─ db/                   # schema.sql · seed.sql
    └─ database.js           # MySQL 커넥션 풀
 ```
 
@@ -61,12 +62,21 @@ cms-portfolio/
 
 ### 사전 준비
 - Node.js 18+
-- MySQL 8 (스키마: `cms_db`)
+- MySQL 8
+
+### 데이터베이스
+스키마와 샘플 데이터는 [`server/db/`](server/db) 에 있습니다.
+```bash
+mysql -u root -p < server/db/schema.sql   # cms_db + 테이블 생성
+mysql -u root -p < server/db/seed.sql      # (선택) 샘플 데이터 — 대시보드/목록이 채워짐
+```
+> `seed.sql` 의 등록일·계약일은 실행 시점 기준 상대값이라 대시보드 차트가 항상 최근 데이터로 표시됩니다.
+> 모든 샘플 데이터는 가상의 값입니다.
 
 ### 백엔드
 ```bash
 cd server
-cp .env.example .env      # DB 접속 정보 입력
+cp .env.example .env      # DB 접속 정보 입력 (DB_USER / DB_PASSWORD 등)
 npm install
 npm start                 # 기본 포트 5000
 ```
