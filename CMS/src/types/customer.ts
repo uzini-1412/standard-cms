@@ -21,8 +21,8 @@ export interface CustomerContact {
 export type ConsultationHistory = Consultation;
 
 export interface ContractHistory {
-  end_date: string | undefined;
-  start_date: string | undefined;
+  end_date?: string;
+  start_date?: string;
   시작일?: string;
   종료일?: string;
   id: number;
@@ -31,10 +31,11 @@ export interface ContractHistory {
   계약일: string;
   프로젝트명: string;
 
-  사업기간: string; // 계산된 값: "YYYY-MM-DD ~ YYYY-MM-DD (n개월)"
+  사업기간?: string; // 계산된 값: "YYYY-MM-DD ~ YYYY-MM-DD (n개월)"
   계약금액: string;
-  MD: string;
-  PM: string;
-  컨설턴트: string;
-  비고: string;
+  MD?: number | string;
+  PM?: string;
+  컨설턴트?: string;
+  비고?: string;
+  개월수?: string;
 }

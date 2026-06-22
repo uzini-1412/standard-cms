@@ -12,17 +12,7 @@ import React from 'react';
 import { formatMonthsOnly } from '../../shared/utils/dateCalculations';
 import { useToast } from '../../app/contexts/ToastContext';
 import { SERVER_URL } from '../../config';
-
-interface CustomerContact {
-  id: number;
-  등록일자: string;
-  이름: string;
-  부서: string;
-  직책: string;
-  휴대전화: string;
-  이메일: string;
-  비고: string;
-}
+import { CustomerContact } from '../../types/manager';
 
 interface ConsultationHistory {
   id: number;
@@ -131,7 +121,7 @@ export function CustomerDetail() {
           고객담당자: dbData.customerContacts?.map((contact: any) => ({
             id: contact.id,
             등록일자: contact.reg_date?.split('T')[0] || '-',
-            이름: contact.name,
+            담당자: contact.name,
             부서: contact.department,
             직책: contact.position,
             휴대전화: contact.mobile_phone,
@@ -432,7 +422,7 @@ return (
                         >
                            <td className="px-3 py-2 text-center text-xs text-gray-600">{index + 1}</td>
                            <td className="px-3 py-2 text-center text-xs text-gray-600">{contact.등록일자}</td>
-                           <td className="px-3 py-2 text-center text-xs text-gray-600 ">{contact.이름}</td>
+                           <td className="px-3 py-2 text-center text-xs text-gray-600 ">{contact.담당자}</td>
                            <td className="px-3 py-2 text-center text-xs text-gray-600">{contact.부서}</td>
                            <td className="px-3 py-2 text-center text-xs text-gray-600">{contact.직책}</td>
                            <td className="px-3 py-2 text-center text-xs text-gray-600">{contact.휴대전화}</td>

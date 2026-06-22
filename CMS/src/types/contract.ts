@@ -5,7 +5,7 @@ export interface Contract {
   계약일: string;
   프로젝트명: string;
   계약금액: string;
-  MD?: number;
+  MD?: number | string; // DB에서 숫자/문자열 혼재로 들어올 수 있어 둘 다 허용
   PM?: string;
   컨설턴트?: string;
   비고?: string;

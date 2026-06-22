@@ -90,5 +90,8 @@ npm run dev
 - [x] 조직 식별 정보 제거 및 도메인 용어 일반화
 - [x] 죽은 코드·중복 라우트 정리, TypeScript 도입(`tsc` 도구화)
 - [x] 목록 화면 공용 베이스(`ListTable` / `useClientPagedList`) 도입
-- [ ] 전 목록 화면을 공용 베이스로 전환 (Customer / Consultation / Contract / Manager)
-- [ ] 폼/상세 화면의 도메인 타입 통합 (`Contract` / `CustomerContact` 인라인 타입 정리) — `npm run typecheck` 잔여 항목
+- [x] 전 목록 화면을 공용 베이스로 전환 (Customer / Consultation / Contract / Manager)
+- [x] 폼/상세 화면의 도메인 타입 통합 (`Contract` / `CustomerContact`) — **`npm run typecheck` 0 에러**
+- [ ] 기능 개선/추가 (대시보드 지표, 검색/엑셀, 권한 등) — 2차 패스
+
+> `npm run build` 는 타입 검사(`tsc --noEmit`) 통과 후 번들링하도록 구성되어 있습니다.
