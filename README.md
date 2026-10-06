@@ -106,6 +106,21 @@ npm run dev
 | `npm run build` | 프로덕션 번들 |
 | `npm run typecheck` | 타입 검사 (`tsc --noEmit`) |
 
+## 배포
+
+GCP VM 한 대에서 프론트·API·DB 를 함께 서빙합니다.
+
+```
+브라우저 ──▶ nginx :80 ─┬─ /            → /var/www/cms (CMS 빌드 결과)
+                        └─ /api, /uploads → Node(Express) :5000 (pm2) ──▶ MySQL (docker, 127.0.0.1:13306)
+```
+
+- 프론트는 `VITE_SERVER_URL` 을 비워 빌드해 같은 주소의 `/api` 를 호출합니다.
+- `main` 에 push 하면 GitHub Actions([`deploy.yml`](.github/workflows/deploy.yml))가 VM 에 SSH 로 접속해
+  [`scripts/deploy.sh`](scripts/deploy.sh) 를 실행합니다 (git pull → pm2 재시작 → 프론트 빌드·반영).
+- 배포용 SSH 키는 VM 에서 `deploy.sh` 실행만 허용되도록 제한되어 있습니다.
+- 필요한 저장소 Secrets: `VM_HOST`, `VM_SSH_KEY`
+
 ## 로드맵 / 표준화 진행
 
 - [x] 환경변수 기반 설정 전환 (하드코딩된 주소·자격증명 제거)
