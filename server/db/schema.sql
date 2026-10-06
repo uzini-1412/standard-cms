@@ -10,6 +10,9 @@
 -- companies 삭제 시 자식 행이 함께 지워지도록 FK 에 ON DELETE CASCADE 를 건다.
 -- =====================================================================
 
+-- 클라이언트 기본 문자셋이 latin1 인 환경(docker-entrypoint 등)에서도 한글이 깨지지 않도록.
+SET NAMES utf8mb4;
+
 CREATE DATABASE IF NOT EXISTS cms_db
   DEFAULT CHARACTER SET utf8mb4
   DEFAULT COLLATE utf8mb4_unicode_ci;
