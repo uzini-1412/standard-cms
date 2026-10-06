@@ -70,8 +70,9 @@ cms-portfolio/
 **방법 A — Docker (권장, 한 줄):** 기존 MySQL 과 충돌하지 않는 격리 컨테이너(호스트 포트 `13306`)를
 띄우고 스키마·시드를 자동 적재합니다.
 ```bash
+cp .env.example .env      # MYSQL_ROOT_PASSWORD 에 사용할 비밀번호 입력
 docker compose up -d
-# server/.env 예시:  DB_HOST=localhost  DB_PORT=13306  DB_USER=root  DB_PASSWORD=cms_local_pw  DB_NAME=cms_db
+# server/.env 예시:  DB_HOST=localhost  DB_PORT=13306  DB_USER=root  DB_PASSWORD=<위와 같은 값>  DB_NAME=cms_db
 ```
 
 **방법 B — 기존 MySQL 에 직접 적재:**

@@ -5,6 +5,10 @@
 #
 # 기존에 쓰던 MySQL 과 충돌하지 않도록 호스트 포트는 13306 을 쓴다(컨테이너 내부는 3306).
 # 접속 정보는 server/.env 의 DB_* 값과 일치시킨다.
+#
+# root 비밀번호는 레포에 두지 않는다. 루트의 .env(gitignore 대상)에 MYSQL_ROOT_PASSWORD 를 적어둔다.
+#   cp .env.example .env
+# 포트는 127.0.0.1 에만 열어 외부에서 DB 에 직접 붙지 못하게 한다.
 
 services:
   db:
@@ -12,16 +16,16 @@ services:
     container_name: cms-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: cms_local_pw
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?루트 .env 에 MYSQL_ROOT_PASSWORD 를 설정하세요}
       MYSQL_DATABASE: cms_db
     ports:
-      - "13306:3306"
+      - "127.0.0.1:13306:3306"
     volumes:
       - cms_mysql_data:/var/lib/mysql
       - ./server/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ./server/db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pcms_local_pw"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p\"$$MYSQL_ROOT_PASSWORD\""]
       interval: 5s
       timeout: 5s
       retries: 20
