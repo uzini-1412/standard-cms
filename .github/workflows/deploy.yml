@@ -1,0 +1,30 @@
+name: Deploy to VM
+
+# main 에 push 되면 VM 에 SSH 로 접속해 scripts/deploy.sh 를 실행한다.
+# 필요한 저장소 Secrets:
+#   VM_HOST    — VM 외부 IP
+#   VM_SSH_KEY — 배포 전용 개인키 (VM 쪽에서는 deploy.sh 만 실행 가능하도록 제한됨)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: SSH 키 준비
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.VM_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: VM 에서 배포 실행
+        run: ssh -T -i ~/.ssh/deploy_key yj040@${{ secrets.VM_HOST }}
